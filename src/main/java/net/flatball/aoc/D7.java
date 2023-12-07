@@ -1,6 +1,7 @@
 package net.flatball.aoc;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
@@ -55,12 +56,7 @@ public class D7 {
             hist[CARD_RANKS['A']] = jc;
           } else {
             // otherwise, use our histogram to find the highest occurring card
-            int max = 0;
-            for (int h : hist) {
-              if (h > max) {
-                max = h;
-              }
-            }
+            int max = Arrays.stream(hist).reduce(0, (a, b)-> Math.max(b, a));
             // search from highest rank to low for that histogram entry
             // and give all the jokers to it to give us the highest ranking
             for (int i = hist.length - 1; i >= 0; i--) {
