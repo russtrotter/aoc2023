@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
+ * <p>
  * huh, I don't know if this one was easy or if I just got lucky.  I'm a little hesitant whenever the instructions
  * basically spell out an algorithm for what to do.  While correct, it's meant to teach a concept and the actual
  * code that finishes before the heat death of the universe takes some creativity.  Just to get something down
@@ -14,40 +15,39 @@ import java.util.List;
  * On a whim, I think, huh, part 2 kinda just looks like starting the processing in reverse? could it be that simple?
  * At least for this particular input apparently it was.  Part 2 also complete.  Probably the quickest day (for me)
  * yet.
+ * </p>
+ * <p>
+ * A few more compaction tweaks and reusing the same arraylist for all passes makes things even better IMHO.
+ * This solution is probably one I can actually be sorta proud of so far in AOC.
+ * </p>
  */
 public class D9 implements AOC {
   @Override
   public void run(int part, List<String> lines) {
-
     int total = 0;
     for (String line : lines) {
-      List<Integer> tails = new ArrayList<>();
       List<Integer> list = Arrays.stream(line.split(" ")).map(Integer::parseInt).toList();
       if (part == 2) {
         list = list.reversed();
       }
-      for (;;) {
+      // new modifiable array list so we can reuse the same array for all passes
+      list = new ArrayList<>(list);
+      int len = list.size();
+      for (; ; ) {
         int zeros = 0;
-        List<Integer> n = new ArrayList<>(list.size() - 1);
-        tails.add(list.getLast());
-        for (int i = 0; i < (list.size() - 1); i++) {
-          int delta = list.get(i + 1) - list.get(i);
+        len--;
+        total += list.get(len);
+        for (int i = 1; i <= len; i++) {
+          int delta = list.get(i) - list.get(i - 1);
           if (delta == 0) {
             zeros++;
           }
-          n.add(delta);
+          list.set(i - 1, delta);
         }
-        list = n;
-        if (zeros == n.size()) {
+        if (zeros == len) {
           break;
         }
       }
-      int next = 0;
-      for (int i = tails.size() - 1; i >= 0; i--) {
-        next += tails.get(i);
-      }
-      total += next;
-      System.out.println("TAILS: " + tails + "=" + next);
     }
     System.out.println("PART " + part + " total " + total);
   }
