@@ -8,6 +8,19 @@ public class D11 implements AOC {
     Vertex vertex;
     int dist;
     boolean visited;
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      State state = (State) o;
+      return Objects.equals(vertex, state.vertex);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(vertex);
+    }
   }
 
 
@@ -49,6 +62,7 @@ public class D11 implements AOC {
     }
     // Distance of source vertex from itself is always 0
     spState[src.y][src.x].dist = 0;
+    queue.add(spState[src.y][src.x]);
 
     final int xMin = Math.max(0, Math.min(src.x, dst.x));
     final int xMax = Math.min(spState[0].length, Math.max(src.x, dst.x));
@@ -56,11 +70,16 @@ public class D11 implements AOC {
     final int yMax = Math.min(spState.length, Math.max(src.y, dst.y));
 
     for (;;) {
-      final Vertex vert = minDistance();
-      if (vert.equals(dst)) {
+//      final Vertex vert = minDistance();
+//      if (vert.equals(dst)) {
+//        break;
+//      }
+//      final State vertState = spState[vert.y][vert.x];
+      if (queue.isEmpty()) {
         break;
       }
-      final State vertState = spState[vert.y][vert.x];
+      final State vertState = queue.remove();
+      final Vertex vert = vertState.vertex;
 
 
       final Vertex up = vert.y > yMin ? new Vertex(vert.x, vert.y - 1) : null;
@@ -70,8 +89,7 @@ public class D11 implements AOC {
 
       Stream.of(up, right, down, left).filter(Objects::nonNull).forEach(adj -> {
         final State adjState = spState[adj.y][adj.x];
-        if (!adjState.visited) {
-          // TODO: add weights for blanks
+        //if (!adjState.visited) {
           int w = 1;
           if (adj.x != vert.x && horzCount[adj.x] == 0) {
             w++;
@@ -82,10 +100,13 @@ public class D11 implements AOC {
           int d = vertState.dist + w;
           if (d < adjState.dist) {
             adjState.dist = d;
+            if (!queue.contains(adjState)) {
+              queue.add(adjState);
+            }
           }
-        }
+        //}
       });
-      vertState.visited = true;
+      //vertState.visited = true;
     }
   }
 
