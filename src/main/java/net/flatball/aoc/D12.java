@@ -45,7 +45,7 @@ public class D12 implements AOC {
 
   @Override
   public void run(int part, List<String> lines) {
-    int maxBits = 0;
+
     int total = 0;
     for (String line : lines) {
       int index = line.indexOf(' ');
@@ -65,10 +65,6 @@ public class D12 implements AOC {
         damaged = dmg;
       }
 
-      //this.ranges = damaged;
-
-      this.rangeBits = damaged.stream().reduce(0, (a,b)->a + b + 1) - 1;
-      System.out.println("RANGEBITS " + rangeBits);
       this.ranges = new ArrayList<>();
       for (int i = 0; i < damaged.size(); i++) {
         if (i > 0) {
@@ -80,16 +76,60 @@ public class D12 implements AOC {
         }
       }
 
-      final List<Integer>  queue = new ArrayList<>();
-      int found = foo3(queue, conditions, 0);
+      // ######
+      int found = foo4(0, conditions, 0, "");
       System.out.println("LINE " + conditions + ":" + damaged + "=" + found);
       total += found;
+      // ######
+
+
+//
+//      final List<Integer>  queue = new ArrayList<>();
+//      int found = foo3(queue, conditions, 0);
+//      System.out.println("LINE " + conditions + ":" + damaged + "=" + found);
+//      total += found;
     }
     System.out.println("PART " + part + " total is " + total);
   }
 
+  int foo4(int r, String str, int pos, String chain) {
+    if (pos == str.length()) {
+      if (r == ranges.size()) {
+        System.out.println("WINNER BEANS " + chain);
+        return 1;
+      }
+      return 0;
+    }
+    char ch = str.charAt(pos);
+    if (ch == '#') {
+      if (r == ranges.size() || ranges.get(r) != 1) {
+        return 0;
+      }
+      return foo4(r + 1, str, pos + 1, chain + "#");
+    } else if (ch == '.') {
+      if (r < ranges.size() && ranges.get(r) == 0) {
+        r++;
+      }
+      return foo4(r, str, pos + 1, chain + "a");
+    } else if (ch == '?') {
+      int count = 0;
+      if (r < ranges.size() && ranges.get(r) == 1) {
+        count += foo4(r + 1, str, pos + 1, chain + "#");
+      }
+      if (r < ranges.size() && ranges.get(r) == 0) {
+        r++;
+      }
+      if (count == 0) {
+        count += foo4(r, str, pos + 1, chain + "b");
+      }
+
+      return count;
+    } else throw new IllegalStateException("bad char: " + str);
+  }
+
   List<Integer> ranges;
-  int rangeBits = 0;
+
+
 
   int foo3(List<Integer> stack, String str, int pos) {
     int j = 0;
