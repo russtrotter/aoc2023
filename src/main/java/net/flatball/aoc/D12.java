@@ -44,6 +44,17 @@ MAX TOTAL OF DAMAGE BITS: 17
 10 150 2250
  */
 
+/**
+ * failed AOC on this day. First time didn't get the 2nd star in time for the next puzzle got released.
+ * did a bit more work on it over the next day but still struggled getting something fast enough for part2.
+ * I'd keep converging towards the same bad idea.  Decided to just google some solutions/hints/tricks for
+ * part 2 and saw a nice python impl using a memoized cache of strings+damage-lists.  If i had thought
+ * caching I think i could have gotten it done that day, but I didn't, thus failure.  Reflecting back the cache idea
+ * makes good sense since there's probably many patterns duplicated.  I think I was also onto something
+ * where ? chars in the input get transformed into 2 versions of the puzzle, each branch solved recursively
+ * rather than trying to dance with the ? char.  Hopefully some lessons learned, but I'm feeling defeated and
+ * yet strangely relieved of the pressure of trying to bag the whole AOC.
+ */
 public class D12 implements AOC {
 
   @Override
