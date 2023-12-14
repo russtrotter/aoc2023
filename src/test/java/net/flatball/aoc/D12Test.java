@@ -22,6 +22,11 @@ public class D12Test extends AOCRunner {
     process(new D12(), 2, 12, "_ex1");
   }
 
+  @Test
+  public void part2other() throws IOException {
+    process(new D12(), 2, 12, "_ex2");
+  }
+
 
 
   @Test

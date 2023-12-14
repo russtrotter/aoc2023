@@ -1,7 +1,6 @@
 package net.flatball.aoc;
 
 import java.util.*;
-import java.util.stream.IntStream;
 
 /*
 0001     1
@@ -39,6 +38,10 @@ x1x1x1x1x1x1x1x
 /*
 MAXBITS: 20
 MAXRANGE: 14
+MAX TOTAL OF DAMAGE BITS: 17
+
+
+10 150 2250
  */
 
 public class D12 implements AOC {
@@ -46,7 +49,8 @@ public class D12 implements AOC {
   @Override
   public void run(int part, List<String> lines) {
 
-    int total = 0;
+    long total = 0;
+    int maxFoo = 0;
     for (String line : lines) {
       int index = line.indexOf(' ');
       if (index == -1) {
@@ -65,22 +69,56 @@ public class D12 implements AOC {
         damaged = dmg;
       }
 
-      this.ranges = new ArrayList<>();
-      for (int i = 0; i < damaged.size(); i++) {
-        if (i > 0) {
-          this.ranges.add(0);
-        }
-        int d = damaged.get(i);
-        for (; d > 0; d--) {
-          this.ranges.add(1);
-        }
-      }
+      long found = solverRec(conditions, damaged);
+      System.out.println("COMBOS " + conditions + " " + damaged + "=" + found);
+      total += found;
+
+//      this.ranges = new ArrayList<>();
+//
+//      int tots = damaged.size();
+//      this.damageMask = 0;
+//      for (int i = 0; i < damaged.size(); i++) {
+//        if (i > 0) {
+//          this.damageMask <<= 1;
+//        }
+//        int d = damaged.get(i);
+//        tots += d;
+//        for (; d > 0; d--) {
+//          this.damageMask = (damageMask << 1) | 1;
+//        }
+//      }
+//      maxFoo = Math.max(maxFoo, tots);
+
+
+//      this.ranges = new ArrayList<>();
+//      for (int i = 0; i < damaged.size(); i++) {
+//        int d = damaged.get(i);
+//        for (; d > 0; d--) {
+//          this.ranges.add(1);
+//        }
+//        this.ranges.add(0);
+//      }
+
+//      int times = 1;
+//      if (part == 2) {
+//        times = 5;
+//      }
+//      int found = 0;
+//      char [] a = conditions.toCharArray();
+//      for (int iter = 0; iter < times; iter++) {
+//        if (iter > 0) {
+//          a = ("?" + conditions).toCharArray();
+//        }
+//        int f = foo5(0, a, 0);
+//        System.out.println("ITER " + iter + "=" + f);
+//      }
 
       // ######
-      int found = foo4(0, conditions, 0, "");
-      System.out.println("LINE " + conditions + ":" + damaged + "=" + found);
-      total += found;
+//      int found = foo4(0, conditions, 0, "");
+      //System.out.println("LINE " + conditions + ":" + damaged + "=" + found);
+      //total += found;
       // ######
+
 
 
 //
@@ -90,6 +128,114 @@ public class D12 implements AOC {
 //      total += found;
     }
     System.out.println("PART " + part + " total is " + total);
+    System.out.println("MAXFOO " + maxFoo);
+  }
+
+
+  record Key(String puz, List<Integer> scores) {}
+  private final Map<Key, Long> memo = new HashMap<>();
+
+  long solverRec(String puz, List<Integer> scores) {
+    final Key key = new Key(puz, scores);
+    Long m = memo.get(key);
+    if (m != null) {
+      return m;
+    }
+    long value = solverRecInner(puz, scores);
+    memo.put(key, value);
+    return value;
+  }
+
+  long solverRecInner(String puz, List<Integer> scores) {
+    int hashesLeft = scores.stream().reduce(0, Integer::sum);
+    if (puz.length() < hashesLeft) {
+      return 0;
+    }
+    if (puz.isEmpty()) {
+      return hashesLeft > 0 ? 0 : 1;
+    }
+    if (puz.charAt(0) == '.') {
+      return solverRec(puz.substring(1), scores);
+    }
+    if (puz.charAt(0) == '#') {
+      if (scores.isEmpty()) {
+        return 0;
+      }
+      int curScore = scores.getFirst();
+      List<Integer> rest = scores.subList(1, scores.size());
+      for (int i = 0; i < curScore; i++) {
+        if (puz.charAt(i) == '.') {
+          return 0;
+        }
+      }
+      if (puz.length() == curScore && rest.isEmpty()) {
+        return 1;
+      }
+      if (puz.charAt(curScore) == '#') {
+        return 0;
+      }
+      return solverRec(puz.substring(curScore + 1), rest);
+    }
+    if (puz.charAt(0) == '?') {
+      int hashCount = 0;
+      int qCount = 0;
+      for (int i = 0; i < puz.length(); i++) {
+        switch (puz.charAt(i)) {
+          case '?' -> qCount++;
+          case '#' -> hashCount++;
+        }
+      }
+      if ((qCount + hashCount) > hashesLeft) {
+        return solverRec("#" + puz.substring(1), scores)
+                + solverRec("." + puz.substring(1), scores);
+      } else {
+        return solverRec("#" + puz.substring(1), scores);
+      }
+    }
+    throw new IllegalStateException("unreachable");
+  }
+
+
+  int damageMask;
+
+  int foo5(int bits, char[] b, int pos) {
+    //String stuff = new String(b);
+    //System.out.println("STUFF: " + stuff);
+    //String dmgStr = Integer.toBinaryString(damageMask);
+    //String bitStr = Integer.toBinaryString(bits);
+    //System.out.println("DMG " + dmgStr + " : " + bitStr);
+    if (pos == b.length) {
+      if (bits == 0) {
+        return 0;
+      }
+      while ((bits & 1) == 0) {
+        bits >>>= 1;
+      }
+      if ((bits ^ damageMask) == 0) {
+        return 1;
+      }
+      return 0;
+    }
+    int count = 0;
+    char ch = b[pos];
+    if (ch == '#') {
+      bits = (bits << 1) | 1;
+      count = foo5(bits, b, pos + 1);
+    } else if (ch == '.') {
+      if ((bits & 1) != 0) {
+        bits = (bits << 1);
+      }
+      count = foo5(bits, b, pos + 1);
+    } else if (ch == '?') {
+      b[pos] = '#';
+      count += foo5(bits, b, pos);
+      b[pos] = '.';
+      count += foo5(bits, b, pos);
+      b[pos] = '?';
+    } else {
+      throw new IllegalStateException("bad: " + ch);
+    }
+    return count;
   }
 
   int foo4(int r, String str, int pos, String chain) {
@@ -127,8 +273,8 @@ public class D12 implements AOC {
     } else throw new IllegalStateException("bad char: " + str);
   }
 
-  List<Integer> ranges;
 
+  List<Integer> ranges;
 
 
   int foo3(List<Integer> stack, String str, int pos) {
@@ -142,7 +288,7 @@ public class D12 implements AOC {
         b.add(v);
         j++;
       } else {
-        for (j++;j < stack.size(); j++) {
+        for (j++; j < stack.size(); j++) {
           if (stack.get(j) != 0) {
             break;
           }
