@@ -7,7 +7,7 @@ import java.util.List;
  *
  * This one sucked because the wording of the problem was so nuanced to me, that I couldn't make out the
  * right logic for whether p1 ref lines should be used if new ones for p2 were different.  It was so
- * frustrated that I googled for p2's description being ambiguous and in reading the subreddit thread,
+ * frustrated thatw I googled for p2's description being ambiguous and in reading the subreddit thread,
  * kinda got a spoiler where p2 is just a slight special case for p1 where if there's only 1 single
  * different bit/cell then it must be the smudged.  I at least didn't copy another implementation (unlike D12)
  * so I could at least implement that logic, but it's still frustrating to have wording keep snagging me
