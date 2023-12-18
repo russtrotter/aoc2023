@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class D17 implements AOC {
   int[][] weights;
   boolean[][] visits;
+  int[][] costs;
   int minPath;
   int dim;
 
@@ -52,6 +53,8 @@ public class D17 implements AOC {
 
   int path(Point start, Point destination) {
     visits = new boolean[dim][dim];
+    costs = new int[dim][dim];
+    Arrays.stream(costs).forEach(row -> Arrays.fill(row, Integer.MAX_VALUE));
     minPath = Integer.MAX_VALUE;
     memo.clear();
     final List<Dir> path = new ArrayList<>();
@@ -62,7 +65,6 @@ public class D17 implements AOC {
     }
     return minPath;
   }
-
 
 
   static void status(List<Dir> paths) {
@@ -78,13 +80,29 @@ public class D17 implements AOC {
 
   final Map<Point, Integer> distances = new HashMap<>();
 
+  static List<Point> adj(Point pt, int dim) {
+    int yMin = Math.max(0, pt.y - 2);
+    int yMax = Math.max(dim, pt.y + 2);
+    int xMin = Math.max(0, pt.x - 2);
+    int xMax = Math.max(dim, pt.x + 2);
+    /*
+    123P123
+     */
+    for (int y = yMin; y < yMax; y++) {
+      for (int x = xMin; x < xMax; x++) {
+        System.out.println(new Point(y, x));
+      }
+    }
+    return null;
+  }
+
   void drive2(Point location, Point destination, List<Dir> path, int total) {
     final PriorityQueue<Point> queue = new PriorityQueue<>(Comparator.comparingInt(p -> weights[p.y][p.x]));
     distances.put(location, 0);
     queue.add(location);
     final Set<Point> v = new HashSet<>();
     final Map<Point, Point> prev = new HashMap<>();
-    for (;;) {
+    for (; ; ) {
       if (queue.isEmpty()) {
         throw new IllegalStateException("PQ is empty");
       }
@@ -93,7 +111,6 @@ public class D17 implements AOC {
         break;
       }
       for (Dir dir : Dir.values()) {
-        status(path);
         final Point adj = pt.go(dir);
         if (adj.x < 0 || adj.x >= dim) {
           continue;
@@ -101,27 +118,26 @@ public class D17 implements AOC {
         if (adj.y < 0 || adj.y >= dim) {
           continue;
         }
-        if (!path.isEmpty() && dir.opposite(path.getLast())) {
-          continue;
-        }
+//        if (!path.isEmpty() && dir.opposite(path.getLast())) {
+//          continue;
+//        }
 //        if (!v.add(adj)) {
 //          continue;
 //        }
-        if (path.size() > 2 && dir.equals(path.getLast()) && dir.equals(path.get(path.size() - 2)) && dir.equals(path.get(path.size() - 3))) {
-          continue;
-        }
+//        if (path.size() > 2 && dir.equals(path.getLast()) && dir.equals(path.get(path.size() - 2)) && dir.equals(path.get(path.size() - 3))) {
+//          continue;
+//        }
         int d = distances.get(pt) + weights[adj.y][adj.x];
         int adjDist = distances.getOrDefault(adj, Integer.MAX_VALUE);
         if (d < adjDist) {
-          total += d;
           distances.put(adj, d);
           if (!queue.contains(adj)) {
             queue.add(adj);
             //System.out.println("PI " + pt + "=" + d);
-            path.addLast(dir);
-            if (prev.put(adj, pt) != null) {
-              System.out.println("ADJ COLLISION");
-            }
+//            path.addLast(dir);
+//            if (prev.put(adj, pt) != null) {
+//              System.out.println("ADJ COLLISION");
+//            }
           }
         }
       }
@@ -136,7 +152,7 @@ public class D17 implements AOC {
          */
     Point p = destination;
     int cost = 0;
-    for(;;) {
+    for (; ; ) {
       cost += weights[p.y][p.x];
       //System.out.println("DOGSHIT " + p);
       if (p == location) {
@@ -150,15 +166,92 @@ public class D17 implements AOC {
     minPath = cost;
   }
 
-  record Node(Point p, Dir dir, Node parent) {}
-  record MemoKey(Point p, List<Dir> path)  {}
+  record Node(Point p, Dir dir, int streak, Node parent) {
+  }
+
+  record MemoKey(Point p, Dir dir, int streak) {
+  }
+
   final Set<MemoKey> memo = new HashSet<>();
 
-  void drive(Point location, Point destination, List<Dir> honk, int turf) {
+  void drive4(Point location, Point destination, List<Dir> honk, int barf) {
     final Deque<Node> stack = new ArrayDeque<>();
-    stack.push(new Node(location, null,null));
+    stack.push(new Node(location, null, 0, null));
+    Set<MemoKey> memo = new HashSet<>();
     while (!stack.isEmpty()) {
       final Node node = stack.pop();
+      final Point pt = node.p;
+      if (pt.y < 0 || pt.y >= dim) {
+        continue;
+      }
+      if (pt.x < 0 || pt.x >= dim) {
+        continue;
+      }
+      if (pt.equals(destination)) {
+        System.out.println("SP");
+        plot(node);
+        continue;
+      }
+      if (!memo.add(new MemoKey(pt, node.dir, 0))) {
+        continue;
+      }
+      System.out.println("VISITING " + pt);
+      for (Dir dir : Dir.values()) {
+        stack.push(new Node(pt.go(dir), dir, 0, node));
+      }
+    }
+  }
+
+  void drive(Point location, Point destination, List<Dir> honk, int turf) {
+    recur(new Node(location, null, 0, null), destination, 0);
+  }
+
+
+
+  void recur(Node node, Point destination, int cost) {
+    final Point pt = node.p;
+    if (pt.y < 0 || pt.y >= dim) {
+      return;
+    }
+    if (pt.x < 0 || pt.x >= dim) {
+      return;
+    }
+    if (node.streak > 3) {
+      return;
+    }
+    cost += weights[pt.y][pt.x];
+    if (cost > costs[pt.y][pt.x]) {
+      return;
+    }
+    costs[pt.y][pt.x] = cost;
+
+    if (pt.equals(destination)) {
+      minPath = Math.min(cost, minPath);
+      //System.out.println("SP: " + cost);
+      //plot(node);
+      return;
+    }
+    if (visits[pt.y][pt.x]) {
+      return;
+    }
+    visits[pt.y][pt.x] = true;
+    for (Dir dir : Dir.values()) {
+      if (node.dir != null && dir.opposite(node.dir)) {
+        continue;
+      }
+      recur(new Node(pt.go(dir), dir, dir.equals(node.dir) ? node.streak + 1 : 1, node), destination, cost);
+    }
+    visits[pt.y][pt.x] = false;
+  }
+
+  void drive1(Point location, Point destination, List<Dir> honk, int turf) {
+    final Deque<Node> stack = new ArrayDeque<>();
+    stack.push(new Node(location, Dir.RIGHT, 0, null));
+    while (!stack.isEmpty()) {
+      final Node node = stack.pop();
+      if (node.streak >= 3) {
+        continue;
+      }
       final Point pt = node.p;
       // TODO: short circuit total?
       if (pt.y < 0 || pt.y >= dim) {
@@ -167,52 +260,64 @@ public class D17 implements AOC {
       if (pt.x < 0 || pt.x >= dim) {
         continue;
       }
+      if (pt.equals(destination)) {
+        int total = 0;
+        Node link = node;
+
+        while (link != null) {
+          total += weights[link.p.y][link.p.x];
+          link = link.parent;
+        }
+        minPath = Math.min(minPath, total);
+        System.out.println("SUM PATH: total=" + total);
+        plot(node);
+        continue;
+      }
       if (visits[pt.y][pt.x]) {
         continue;
       }
       visits[pt.y][pt.x] = true;
 
-      int total = 0;
-      final List<Dir> path = new ArrayList<>();
-      Node link = node;
-      while (link != null) {
-        System.out.print("LINK " + link.p + "->");
-        if (link.dir != null) {
-          path.addLast(link.dir);
-        }
-        total += weights[link.p.y][link.p.x];
-        link = link.parent;
-      }
-      System.out.println();
-      status(path);
-
-//    final List<Dir> foo = new ArrayList<>(path.subList(Math.max(0, path.size() - 2), path.size()));
-//    if (!memo.add(new MemoKey(location, foo))) {
-//      return;
-//    }
-
-//      final int loss = weights[location.y][location.x];
-//      total += loss;
-//      if (total > minPath) {
-//        continue;
-//      }
-      if (pt.equals(destination)) {
-        minPath = Math.min(minPath, total);
-      }
-
       for (Dir dir : Dir.values()) {
-        if (!path.isEmpty() && dir.opposite(path.getLast())) {
+//        if (!path.isEmpty() && dir.opposite(path.getLast())) {
+//          continue;
+//        }
+//        if (path.size() > 2 && dir.equals(path.getLast()) && dir.equals(path.get(path.size() - 2)) && dir.equals(path.get(path.size() - 3))) {
+//          continue;
+//        }
+        if (node.dir != null && dir.opposite(node.dir)) {
           continue;
         }
-        if (path.size() > 2 && dir.equals(path.getLast()) && dir.equals(path.get(path.size() - 2)) && dir.equals(path.get(path.size() - 3))) {
-          continue;
-        }
-        stack.push(new Node(pt.go(dir), dir, node));
+        stack.push(new Node(pt.go(dir), dir, dir.equals(node.dir) ? node.streak + 1 : 1, node));
 //        path.addLast(dir);
 //        drive(location.go(dir), destination, path, total);
 //        path.removeLast();
       }
     }
+  }
+
+  void plot(Node node) {
+    char[][] plot = new char[dim][dim];
+    for (char[] row : plot) {
+      Arrays.fill(row, '.');
+    }
+    StringBuilder path = new StringBuilder();
+    while (node != null) {
+      plot[node.p.y][node.p.x] = '#';
+      if (node.dir == null) {
+        path.insert(0, "R");
+      } else {
+        path.insert(0, switch (node.dir) {
+          case UP -> "^";
+          case DOWN -> "v";
+          case LEFT -> "<";
+          case RIGHT -> ">";
+        });
+      }
+      node = node.parent;
+    }
+    System.out.println("PATH: " + path);
+    Arrays.stream(plot).map(String::new).forEach(System.out::println);
   }
 
 

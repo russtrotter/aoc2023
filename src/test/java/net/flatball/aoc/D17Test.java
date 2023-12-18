@@ -29,6 +29,7 @@ public class D17Test extends AOCRunner {
   @Test
   public void spf() {
     D17 d = new D17();
-    d.run(1, List.of("1111", "9991", "9991", "1111"));
+    //d.run(1, List.of("1111", "9991", "9991", "1111"));
+    d.run(1, List.of("1999", "1111", "9991", "1111"));
   }
 }
