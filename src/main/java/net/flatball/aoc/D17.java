@@ -60,41 +60,12 @@ public class D17 implements AOC {
     final List<Dir> path = new ArrayList<>();
 
     drive(start, destination, path, 0);
-    if (minPath == Integer.MAX_VALUE) {
-      throw new IllegalStateException("never found a path");
-    }
-    return minPath;
-  }
-
-
-  static void status(List<Dir> paths) {
-    final StringBuilder b = new StringBuilder("PATH: ");
-    paths.stream().map(dir -> switch (dir) {
-      case UP -> "^";
-      case DOWN -> "v";
-      case LEFT -> "<";
-      case RIGHT -> ">";
-    }).forEach(b::append);
-    System.out.println(b);
+    return costs[destination.y][destination.x];
   }
 
   final Map<Point, Integer> distances = new HashMap<>();
 
-  static List<Point> adj(Point pt, int dim) {
-    int yMin = Math.max(0, pt.y - 2);
-    int yMax = Math.max(dim, pt.y + 2);
-    int xMin = Math.max(0, pt.x - 2);
-    int xMax = Math.max(dim, pt.x + 2);
-    /*
-    123P123
-     */
-    for (int y = yMin; y < yMax; y++) {
-      for (int x = xMin; x < xMax; x++) {
-        System.out.println(new Point(y, x));
-      }
-    }
-    return null;
-  }
+
 
   void drive2(Point location, Point destination, List<Dir> path, int total) {
     final PriorityQueue<Point> queue = new PriorityQueue<>(Comparator.comparingInt(p -> weights[p.y][p.x]));
@@ -202,8 +173,51 @@ public class D17 implements AOC {
     }
   }
 
+  record Frame(Point p, Dir dir, int streak, Frame parent, int cost) {
+  }
+
   void drive(Point location, Point destination, List<Dir> honk, int turf) {
-    recur(new Node(location, null, 0, null), destination, 0);
+    //recur(new Node(location, null, 0, null), destination, 0);
+    //final Deque<Frame> stack = new ArrayDeque<>();
+    final PriorityQueue<Frame> stack = new PriorityQueue<>(Comparator.comparingInt(f -> weights[f.p.y][f.p.x]));
+    stack.add(new Frame(location, null, 0, null, 0));
+    while (!stack.isEmpty()) {
+      final Frame node = stack.remove();
+      final Point pt = node.p;
+
+      final int cost = node.cost + weights[pt.y][pt.x];
+      if (cost > costs[pt.y][pt.x]) {
+        continue;
+      }
+      costs[pt.y][pt.x] = cost;
+
+      if (pt.equals(destination)) {
+        continue;
+      }
+      if (visits[pt.y][pt.x]) {
+        continue;
+      }
+      visits[pt.y][pt.x] = true;
+      for (Dir dir : Dir.values()) {
+        if (node.dir != null && dir.opposite(node.dir)) {
+          continue;
+        }
+        final Point adj = pt.go(dir);
+        if (adj.y < 0 || adj.y >= dim) {
+          continue;
+        }
+        if (adj.x < 0 || adj.x >= dim) {
+          continue;
+        }
+        final int streak = dir.equals(node.dir) ? node.streak + 1 : 1;
+        if (streak > 3) {
+          continue;
+        }
+        stack.add(new Frame(adj, dir, streak, node, cost));
+        //recur(new Node(pt.go(dir), dir, dir.equals(node.dir) ? node.streak + 1 : 1, node), destination, cost);
+      }
+      visits[pt.y][pt.x] = false;
+    }
   }
 
 
