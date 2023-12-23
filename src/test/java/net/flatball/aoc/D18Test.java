@@ -23,6 +23,6 @@ public class D18Test extends AOCRunner {
   }
   @Test
   public void part2() throws IOException {
-    process(new D18(), 2, 18, "_ex1");
+    process(new D18(), 2, 18, "");
   }
 }
