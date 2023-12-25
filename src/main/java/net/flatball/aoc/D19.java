@@ -3,13 +3,22 @@ package net.flatball.aoc;
 import java.util.*;
 import java.util.function.BiFunction;
 
+/**
+ * Another p2 long day struggle.  p1 was fun and easy and a nice change from tree/combinatorics/graphs. P2
+ * went right back in that territory and was almost saddening since it didn't felt like it used too much of
+ * the same machinery as p1.  Skipped the parts list entirely to just focus on the organization of the flows.
+ * After looking at some solutions I at least was on the right track, but the mechanics of iterating
+ * through the rules chopping up the left/right of the ranges as we go might have kept eluding me.  I know
+ * i'm learning (re-learning?) as I go, but the final verdict on this challenge will definitely include something
+ * about my lacking/rusty algorithmic skills.
+ */
 public class D19 implements AOC {
+  static final String ACCEPT = "A";
+  static final String REJECT = "R";
 
-  enum Status {
-    A,
-    R,
-    CONTINUE
-  }
+  record Range(int min, int max) {}
+
+  record Pair<T>(T left, T right) {}
 
   enum Category {
     x, m, a, s
@@ -25,45 +34,55 @@ public class D19 implements AOC {
     }
   }
 
-  static class Context {
-    Status status = Status.CONTINUE;
-    String flow = "in";
-  }
-
   static class Rule {
-    Status status = Status.CONTINUE;
+    String next;
     Category category;
     Integer operand;
+    char operator;
     BiFunction<Integer, Integer, Boolean> condition;
-    String nextFlow;
 
-    void eval(Context ctx, Map<Category, Integer> part) {
-      if (condition != null) {
-        if (operand == null) {
-          throw new IllegalStateException("no operand");
-        }
-        if (category == null) {
-          throw new IllegalStateException("no category");
-        }
-        Integer partValue = part.get(category);
-        if (partValue == null) {
-          throw new IllegalStateException("no value for operand: " + operand);
-        }
-        if (condition.apply(partValue, operand)) {
-          next(ctx);
-        }
-        return;
+    String eval(Part part) {
+      if (condition == null) {
+        return next;
       }
-      next(ctx);
+      if (operand == null) {
+        throw new IllegalStateException(" operand");
+      }
+      if (category == null) {
+        throw new IllegalStateException(" category");
+      }
+      Integer partValue = part.get(category);
+      if (partValue == null) {
+        throw new IllegalStateException(" value for operand: " + operand);
+      }
+      return condition.apply(partValue, operand) ? next : null;
     }
 
-    void next(Context ctx) {
-      if (status != null) {
-        ctx.status = status;
+    static Rule create(String rulePart) {
+      final Rule rule = new Rule();
+      if (ACCEPT.equals(rulePart)) {
+        rule.next = ACCEPT;
+        return rule;
       }
-      if (nextFlow != null) {
-        ctx.flow = nextFlow;
+      if (REJECT.equals(rulePart)) {
+        rule.next = REJECT;
+        return rule;
       }
+      int idx = rulePart.indexOf(':');
+      if (idx == -1) {
+        rule.next = rulePart;
+        return rule;
+      }
+      rule.category = Category.valueOf(rulePart.substring(0, 1));
+      rule.operator = rulePart.charAt(1);
+      rule.condition = switch (rule.operator) {
+        case '<' -> (a,b) -> (a < b);
+        case '>' -> (a,b) -> (a > b);
+        default -> throw new IllegalStateException("invalid operator " + rule.operator);
+      };
+      rule.operand = Integer.parseInt(rulePart.substring(2, idx));
+      rule.next = rulePart.substring(idx + 1);
+      return rule;
     }
   }
 
@@ -71,35 +90,143 @@ public class D19 implements AOC {
   final List<Part> parts = new ArrayList<>();
 
 
+  static class Combo extends EnumMap<Category, Range> {
+    public Combo() {
+      super(Category.class);
+      for (var cat : Category.values()) {
+        put(cat, new Range(1, 4000));
+      }
+    }
+
+    public Combo(Combo other) {
+      super(other);
+    }
+
+    long count() {
+      return this.values().stream().map(r -> (long)(r.max - r.min + 1)).reduce(1L, (a, b) -> (a * b));
+    }
+
+    Pair<Combo> splitBelow(Category category, int mid) {
+      final Range range = get(category);
+      if (range == null) {
+        throw new IllegalStateException("weird no range for: " + category);
+      }
+      if (mid <= range.min) {
+        return new Pair<>(null, this);
+      }
+      if (mid > range.max) {
+        return new Pair<>(this, null);
+      }
+      final Range lo = new Range(range.min, mid - 1);
+      final Combo left = new Combo(this);
+      left.put(category, lo);
+      final Range hi = new Range(mid, range.max);
+      final Combo right = new Combo(this);
+      right.put(category, hi);
+      return new Pair<>(left, right);
+    }
+
+    Pair<Combo> splitAbove(Category category, int mid) {
+      final Range range = get(category);
+      if (mid < range.min) {
+        return new Pair<>(null, this);
+      }
+      if (mid >= range.max) {
+        return new Pair<>(this, null);
+      }
+      final Range lo = new Range(range.min, mid);
+      final Combo left = new Combo(this);
+      left.put(category, lo);
+      final Range hi = new Range(mid + 1, range.max);
+      final Combo right = new Combo(this);
+      right.put(category, hi);
+      return new Pair<>(left, right);
+    }
+  }
+  record Node(String flowName, Combo combo) {}
+
+  void tree() {
+    long accepted = 0L;
+    final Deque<Node> queue = new ArrayDeque<>();
+    queue.push(new Node("in", new Combo()));
+    while (!queue.isEmpty()) {
+      final Node node = queue.remove();
+      Combo ratings = node.combo;
+      if (ACCEPT.equals(node.flowName)) {
+        accepted += ratings.count();
+        continue;
+      } else if (REJECT.equals(node.flowName)) {
+        continue;
+      }
+      final Flow flow = flows.get(node.flowName);
+      if (flow == null) {
+        throw new IllegalStateException("no flow: " + node.flowName);
+      }
+
+      for (Rule rule : flow.rules) {
+        // last rule has no condition
+        if (rule.condition == null) {
+          if (ratings != null) {
+            queue.addLast(new Node(rule.next, ratings));
+          }
+          continue;
+        }
+        if (rule.operator == '<') {
+          final Pair<Combo> pair = ratings.splitBelow(rule.category, rule.operand);
+          if (pair.left != null) {
+            queue.addLast(new Node(rule.next, pair.left));
+            ratings = pair.right;
+          }
+        } else if (rule.operator == '>') {
+          final Pair<Combo> pair = ratings.splitAbove(rule.category, rule.operand);
+          if (pair.right != null) {
+            queue.addLast(new Node(rule.next, pair.right));
+            ratings = pair.left;
+          }
+        }
+        if (ratings == null) {
+          break;
+        }
+      }
+    }
+    System.out.println("ACCEPTED TOTAL : " + accepted);
+  }
+
   @Override
   public void run(int part, List<String> lines) {
     parse(lines);
     System.out.println("FLOWS count " + flows.size());
     System.out.println("PARTS count " + parts.size());
     if (flows.isEmpty()) {
-      throw new IllegalStateException("no flows bro");
+      throw new IllegalStateException(" flows bro");
     }
+    if (part == 2) {
+      tree();
+      return;
+    }
+
     long total = 0L;
     for (Part p : parts) {
       System.out.print("PART " + p + ": in");
-      final Context ctx = new Context();
-      while (ctx.status == Status.CONTINUE) {
-        Flow flow = flows.get(ctx.flow);
+      String next = "in";
+      while (next != null) {
+        Flow flow = flows.get(next);
         if (flow == null) {
-          throw new IllegalStateException("no flow named: " + ctx.flow);
+          throw new IllegalStateException(" flow named: " + next);
         }
-        ctx.flow = null;
         for (Rule rule : flow.rules) {
-          rule.eval(ctx, p);
-          if (ctx.status == Status.A) {
-            System.out.print(" -> " + ctx.status);
+          next = rule.eval(p);
+          if (ACCEPT.equals(next)) {
+            System.out.print(" -> " + next);
             total += p.values().stream().reduce(0, Integer::sum);
+            next = null;
             break;
-          } else if (ctx.status == Status.R) {
-            System.out.print(" -> " + ctx.status);
+          } else if (REJECT.equals(next)) {
+            System.out.print(" -> " + next);
+            next = null;
             break;
-          } else if (ctx.flow != null) {
-            System.out.print(" -> " + ctx.flow);
+          } else if (next != null) {
+            System.out.print(" -> " + next);
             break;
           }
         }
@@ -112,37 +239,16 @@ public class D19 implements AOC {
 
   void parseRules(Flow flow, String ruleBody) {
     for (String rulePart : ruleBody.split(",")) {
-      final Rule rule = new Rule();
-      flow.rules.add(rule);
-      if (Status.A.name().equals(rulePart)) {
-        rule.status = Status.A;
-        continue;
-      } else if (Status.R.name().equals(rulePart)) {
-        rule.status = Status.R;
-        continue;
-      }
-      int idx = rulePart.indexOf(':');
-      if (idx == -1) {
-        rule.nextFlow = rulePart;
-        continue;
-      }
-      final String dest = rulePart.substring(idx + 1);
-      if (Status.A.name().equals(dest)) {
-        rule.status = Status.A;
-      } else if (Status.R.name().equals(dest)) {
-        rule.status = Status.R;
-      } else {
-        rule.nextFlow = dest;
-      }
-      rule.category = Category.valueOf(rulePart.substring(0, 1));
-      if (rulePart.charAt(1) == '<') {
-        rule.condition = (a, b) -> a < b;
-      } else if (rulePart.charAt(1) == '>') {
-        rule.condition = (a, b) -> a > b;
-      } else {
-        throw new IllegalStateException("bad condition operator: " + rulePart);
-      }
-      rule.operand = Integer.parseInt(rulePart.substring(2, idx));
+      flow.rules.add(Rule.create(rulePart));
+    }
+    if (flow.rules.isEmpty()) {
+      throw new IllegalStateException("no rules");
+    }
+    if (flow.rules.subList(0, flow.rules.size() - 1).stream().anyMatch(rule -> rule.condition == null)) {
+      throw new IllegalStateException("rules before last should have condition");
+    }
+    if (flow.rules.getLast().condition != null) {
+      throw new IllegalStateException("should not have condition on last rule");
     }
   }
 
