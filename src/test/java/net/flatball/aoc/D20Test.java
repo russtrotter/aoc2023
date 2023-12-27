@@ -3,6 +3,8 @@ package net.flatball.aoc;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class D20Test extends AOCRunner {
   @Test
@@ -28,5 +30,10 @@ public class D20Test extends AOCRunner {
   @Test
   public void part2() throws IOException {
     process(new D20(), 2, 20, "");
+  }
+
+  @Test
+  public void lcm1() {
+    System.out.println(D20.lcm(new ArrayList<>(List.of(1,5,15))));
   }
 }
